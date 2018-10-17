@@ -6,6 +6,9 @@ require('leaflet-offline');
 const { dialog, app } = require('electron').remote
 const sqlite3 = require('sqlite3').verbose();
 
+require('leaflet-searchbox');
+// import 'leaflet-searchbox/dist/style.css';
+
 let url_satelite = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
 // 世界：1--5级。中国：5--9级。省：9--12级。市：12--18级。级数超过16后数据会比较大。
 const properRanges = [
@@ -162,8 +165,10 @@ glayer_satelite.on('offline:remove-error', function (err) {
     console.error('Error when removing tiles: ' + err);
 });
 
+map.zoomControl.setPosition('topright')
 
 let offlineControl = L.control.offline(glayer_satelite, tilesDb, {
+    position:'topright',
     saveButtonHtml: '保存',
     // removeButtonHtml: '<i class="fa fa-trash" aria-hidden="true"></i>',
     confirmSavingCallback: function (nTilesToSave, continueSaveTiles) {
@@ -201,4 +206,19 @@ let offlineControl = L.control.offline(glayer_satelite, tilesDb, {
 
 offlineControl.addTo(map);
 
-console.log(offlineControl.options)
+
+var control = new L.Control.SearchBox({
+    sidebarTitleText: 'Header',
+    sidebarMenuItems: {
+        Items: [
+            { type: "link", name: "Link 1 (github.com)", href: "http://github.com", icon: "icon-local-carwash" },
+            { type: "link", name: "Link 2 (google.com)", href: "http://google.com", icon: "icon-cloudy" },
+            { type: "button", name: "Button 1", onclick: "alert('button 1 clicked !')", icon: "icon-potrait" },
+            { type: "button", name: "Button 2", onclick: "button2_click();", icon: "icon-local-dining" },
+            { type: "link", name: "Link 3 (stackoverflow.com)", href: 'http://stackoverflow.com', icon: "icon-bike" },
+
+        ]
+    }
+});
+
+map.addControl(control);

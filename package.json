@@ -50,7 +50,8 @@
     "electron-compile": "^6.4.3",
     "electron-squirrel-startup": "^1.0.0",
     "leaflet": "^1.3.4",
-    "leaflet-offline": "^1.1.0",
+    "leaflet-offline": "github:bung87/leaflet-offline",
+    "leaflet-searchbox": "github:bung87/leaflet-searchbox",
     "sqlite3": "^4.0.2"
   },
   "devDependencies": {
