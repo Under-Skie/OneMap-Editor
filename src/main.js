@@ -5,9 +5,7 @@ global.L = require('leaflet');
 require('leaflet-offline');
 const { dialog, app } = require('electron').remote
 const sqlite3 = require('sqlite3').verbose();
-
 require('leaflet-searchbox');
-// import 'leaflet-searchbox/dist/style.css';
 
 let url_satelite = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
 // 世界：1--5级。中国：5--9级。省：9--12级。市：12--18级。级数超过16后数据会比较大。
@@ -30,6 +28,7 @@ const getProperRange = (currentZoom) => {
 
 function createTables(db) {
     db.serialize(function () {
+        db.run('CREATE TABLE Meta (center TEXT NOT NULL,maxBounds TEXT NOT NULL,minZoom INTEGER NOT NULL,maxZoom INTEGER NOT NULL)')
         db.run('CREATE TABLE Tiles (id INTEGER NOT NULL PRIMARY KEY, X INTEGER NOT NULL, Y INTEGER NOT NULL, Zoom INTEGER NOT NULL, Type UNSIGNED INTEGER NOT NULL, CacheTime DATETIME)')
         db.run('CREATE TABLE TilesData (id INTEGER NOT NULL PRIMARY KEY CONSTRAINT fk_Tiles_id REFERENCES Tiles(id) ON DELETE CASCADE, Tile BLOB NULL)')
         db.run('CREATE INDEX IndexOfTiles ON Tiles (X, Y, Zoom, Type)')
@@ -38,15 +37,6 @@ function createTables(db) {
 }
 
 const mapType = 47626774;
-// const glayer_satelite = new L.TileLayer(url_satelite, { subdomains:['mt0','mt1','mt2','mt3'],maxZoom: 18 });
-// function toBuffer(ab) {
-//     var buffer = new Buffer(ab.byteLength);
-//     var view = new Uint8Array(ab);
-//     for (var i = 0; i < buffer.length; ++i) {
-//         buffer[i] = view[i];
-//     }
-//     return buffer;
-// }
 
 let tilesDb = {
     db: null,
@@ -55,7 +45,7 @@ let tilesDb = {
         // return Promise that has the image Blob/File/Stream.
     },
     _saveTile: function (_url, value) {
-         // blob image/jpeg
+        // blob image/jpeg
         let parsedUrl = url.parse(_url)
         let p = parsedUrl.path.substring(parsedUrl.path.lastIndexOf('/') + 1)
         let params = new URLSearchParams(p)
@@ -63,35 +53,35 @@ let tilesDb = {
         let y = params.get('y')
         let z = params.get('z')
         let self = this;
-        let buf = Buffer.from(value) 
+        let buf = Buffer.from(value)
         // var fileReader = new FileReader();
         let promise = new Promise(function (resolve, reject) {
             // fileReader.onload = (event) => {
-                self.db.serialize(function () {
-                    let a = new Date().toISOString().replace('T',' ');
-                    self.db.run('INSERT INTO Tiles (X,Y,Zoom,Type,CacheTime) VALUES ($X,$Y,$Zoom,$Type,$CacheTime)', {
-                        $X: x,
-                        $Y: y,
-                        $Zoom: z,
-                        $Type: mapType,
-                        $CacheTime:a.substr(0,a.length - 1)
-                    });
-                    self.db.run('INSERT INTO TilesData (id,Tile) VALUES ((SELECT last_insert_rowid()),?)', 
-                        buf //toBuffer(event.target.result)
-                    );
-                    resolve(buf);
+            self.db.serialize(function () {
+                let a = new Date().toISOString().replace('T', ' ');
+                self.db.run('INSERT INTO Tiles (X,Y,Zoom,Type,CacheTime) VALUES ($X,$Y,$Zoom,$Type,$CacheTime)', {
+                    $X: x,
+                    $Y: y,
+                    $Zoom: z,
+                    $Type: mapType,
+                    $CacheTime: a.substr(0, a.length - 1)
                 });
-                
+                self.db.run('INSERT INTO TilesData (id,Tile) VALUES ((SELECT last_insert_rowid()),?)',
+                    buf //toBuffer(event.target.result)
+                );
+                resolve(buf);
+            });
+
             // };
         });
-        
+
         // fileReader.readAsArrayBuffer(value);
         return promise;
-      
+
     },
     saveTiles: function (tileUrls) {
 
-        console.log( tileUrls.length)
+        console.log(tileUrls.length)
         var self = this;
 
         var promises = [];
@@ -121,9 +111,9 @@ let tilesDb = {
             })(i, tileUrl);
         }
 
-        return Promise.all(promises).then( ()=>{
+        return Promise.all(promises).then(() => {
             self.db.close()
-        } );
+        });
     },
 
     clear: function () {
@@ -134,13 +124,13 @@ let tilesDb = {
 const minZoom = 3
 const maxZoom = 18
 
-const subdomains = ['mt0', 'mt1', 'mt2', 'mt3']
+// const subdomains = ['mt0', 'mt1', 'mt2', 'mt3']
 
 const glayer_satelite = L.tileLayer.offline(url_satelite, tilesDb, { subdomains: ['mt0'], minZoom: minZoom, maxZoom: maxZoom });
 
 const latlng = new L.latLng(0, 0);
 
-let map = new L.Map('mainmap', { center: [0, 0], zoom: 3, layers: [glayer_satelite] }); // attributionControl:false remove all attributions
+let map = new L.Map('mainmap', { center: latlng, zoom: 3, layers: [glayer_satelite] }); // attributionControl:false remove all attributions
 let attribution = map.attributionControl;
 attribution.setPrefix(false);
 
@@ -168,7 +158,7 @@ glayer_satelite.on('offline:remove-error', function (err) {
 map.zoomControl.setPosition('topright')
 
 let offlineControl = L.control.offline(glayer_satelite, tilesDb, {
-    position:'topright',
+    position: 'topright',
     saveButtonHtml: '保存',
     // removeButtonHtml: '<i class="fa fa-trash" aria-hidden="true"></i>',
     confirmSavingCallback: function (nTilesToSave, continueSaveTiles) {
@@ -191,6 +181,23 @@ let offlineControl = L.control.offline(glayer_satelite, tilesDb, {
             }
             tilesDb.db = new sqlite3.Database(filename);
             createTables(tilesDb.db);
+            let center = map.getCenter();
+            let centerData = [center.lat, center.lng]
+            let b = map.getBounds();
+
+            let
+                northEast = b._northEast,
+                southWest = b._southWest,
+                maxBoundsData = [
+                    [northEast.lat, northEast.lng],
+                    [southWest.lat, southWest.lng]
+                ]
+            tilesDb.db.run('INSERT INTO Meta (center,maxBounds,minZoom,maxZoom ) VALUES ($center,$maxBounds,$minZoom,$maxZoom)',{
+                $center:JSON.stringify(centerData),
+                $maxBounds:JSON.stringify(maxBoundsData),
+                $minZoom:r.min,
+                $maxZoom:r.max
+            })
             continueSaveTiles();
         })
 
