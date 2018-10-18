@@ -121,8 +121,8 @@ let tilesDb = {
     }
 };
 
-const minZoom = 3
-const maxZoom = 18
+const minZoom = 0
+const maxZoom = 19
 
 // const subdomains = ['mt0', 'mt1', 'mt2', 'mt3']
 
@@ -130,7 +130,7 @@ const glayer_satelite = L.tileLayer.offline(url_satelite, tilesDb, { subdomains:
 
 const latlng = new L.latLng(0, 0);
 
-let map = new L.Map('mainmap', { center: latlng, zoom: 3, layers: [glayer_satelite] }); // attributionControl:false remove all attributions
+let map = new L.Map('mainmap', { center: latlng, zoom: 2, layers: [glayer_satelite] }); // attributionControl:false remove all attributions
 let attribution = map.attributionControl;
 attribution.setPrefix(false);
 
